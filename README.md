@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="icon.jpg" alt="GitCarrier Logo" width="100" />
+  <img src="icon.png" alt="GitCarrier Logo" width="100" />
 
   # GitCarrier
   **The Missing Link for the Disconnected Developer**
@@ -92,9 +92,14 @@ Since GitCarrier is designed to be portable, there is no complex installation.
 * Git installed and added to your system PATH.
 
 ### Running the App
+
+ **Note:** If you are a Windows user, you can download the standalone executable from the releases page.
+
+OR run it by python:
+
 ```bash
 # 1. Clone the repository (Replace with your actual repo URL)
-git clone [https://github.com/mehran-mousavi/GitCarrier.git](https://github.com/mehran-mousavi/GitCarrier.git)
+git clone https://github.com/mehran-mousavi/GitCarrier.git
 
 # 2. Navigate to the folder
 cd GitCarrier

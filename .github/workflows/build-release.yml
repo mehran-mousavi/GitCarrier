@@ -1,0 +1,147 @@
+name: Build and Release
+
+on:
+  # Trigger on version tags
+  push:
+    tags:
+      - 'v*'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          # Check for icon file (prefer .ico over .png)
+          if (Test-Path "icon.ico") {
+            $iconPath = "icon.ico"
+          } elseif (Test-Path "icon.png") {
+            $iconPath = "icon.png"
+          } else {
+            $iconPath = $null
+          }
+          
+          # Build command
+          $buildArgs = @(
+            "--onefile",
+            "--windowed",
+            "--name", "GitCarrier",
+            "--clean"
+          )
+          
+          if ($iconPath) {
+            $buildArgs += "--icon", $iconPath
+          }
+          
+          $buildArgs += "git_carrier.py"
+          
+          Write-Host "Building with arguments: $buildArgs"
+          pyinstaller @buildArgs
+
+      - name: Verify build
+        run: |
+          if (Test-Path "dist/GitCarrier.exe") {
+            Write-Host "✅ Build successful!"
+            Get-Item "dist/GitCarrier.exe" | Select-Object Name, Length, LastWriteTime
+          } else {
+            Write-Host "❌ Build failed - executable not found"
+            exit 1
+          }
+
+      - name: Get version
+        id: version
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ github.event.inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}".TrimStart('v')
+          }
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          echo "TAG=v$version" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GitCarrier-Windows
+          path: dist/GitCarrier.exe
+          retention-days: 5
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: GitCarrier-Windows
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Rename executable with version
+        run: |
+          mv GitCarrier.exe GitCarrier-${{ steps.version.outputs.VERSION }}-Windows.exe
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: GitCarrier ${{ steps.version.outputs.TAG }}
+          body: |
+            ## GitCarrier ${{ steps.version.outputs.TAG }}
+            
+            ### 📥 Download
+            - **Windows**: `GitCarrier-${{ steps.version.outputs.VERSION }}-Windows.exe`
+            
+            ### 🚀 Features
+            - Offline Git synchronization via bundle files
+            - Pack commits from home and unpack at work (or vice versa)
+            - Modern Nord-themed UI
+            
+            ### 📋 How to Use
+            1. Download the executable for your platform
+            2. Run the application (no installation required)
+            3. Select your Git repository
+            4. Create bundles to transfer commits offline
+            
+            ---
+            *Built automatically with GitHub Actions*
+          files: |
+            GitCarrier-${{ steps.version.outputs.VERSION }}-Windows.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true

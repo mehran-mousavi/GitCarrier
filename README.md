@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://img.icons8.com/dusk/128/000000/git.png" alt="GitCarrier Logo" width="100" />
+  <img src="icon.jpg" alt="GitCarrier Logo" width="100" />
 
   # GitCarrier
   **The Missing Link for the Disconnected Developer**
